@@ -1,0 +1,21 @@
+[submodule "src/userplugins/customSounds"]
+	path = src/userplugins/customSounds
+	url = https://github.com/ScattrdBlade/customSounds
+[submodule "src/userplugins/moreReact"]
+	path = src/userplugins/moreReact
+	url = https://github.com/coldcord/moreReact.git
+[submodule "src/userplugins/vc-betterActivities"]
+	path = src/userplugins/vc-betterActivities
+	url = https://github.com/D3SOX/vc-betterActivities
+[submodule "src/userplugins/vc-message-logger-enhanced"]
+	path = src/userplugins/vc-message-logger-enhanced
+	url = https://github.com/Syncxv/vc-message-logger-enhanced.git
+[submodule "src/userplugins/vc-notifyUserChanges"]
+	path = src/userplugins/vc-notifyUserChanges
+	url = https://github.com/D3SOX/vc-notifyUserChanges
+[submodule "src/userplugins/vencord-antirickroll"]
+	path = src/userplugins/vencord-antirickroll
+	url = https://github.com/rynmy/vencord-antirickroll.git
+[submodule "src/userplugins/venfetch"]
+	path = src/userplugins/venfetch
+	url = https://git.nin0.dev/userplugins/venfetch
