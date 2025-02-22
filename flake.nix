@@ -61,7 +61,7 @@
                       )
                     );
                     VENCORD_REMOTE = "Vendicated/Vencord";
-                    VENCORD_HASH = self.rev or self.dirtyRev or "unknown";
+                    VENCORD_HASH = self.shortRev or self.dirtyShortRev or "unknown";
                   };
 
                   buildPhase = ''
