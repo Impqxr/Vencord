@@ -29,7 +29,7 @@
               ({ buildWebExtension }: stdenv.mkDerivation
                 (finalAttrs: {
                   pname = "vencord";
-                  version = "1.11.5";
+                  version = "1.11.6";
 
                   src = ./.;
 
