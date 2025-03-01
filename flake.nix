@@ -23,67 +23,87 @@
           in
           rec
           {
+            # taken from nixpkgs vencord package and modified by me
+            vencord =
+              lib.makeOverridable
+                ({ buildWebExtension, userplugins }: stdenv.mkDerivation
+                  (finalAttrs: {
+                    pname = "vencord";
+                    version = "1.11.6";
 
-            default =
-              # taken from nixpkgs vencord package and modified by me
-              ({ buildWebExtension }: stdenv.mkDerivation
-                (finalAttrs: {
-                  pname = "vencord";
-                  version = "1.11.6";
+                    src = ./.;
 
-                  src = ./.;
+                    patchPhase = ''
+                      mkdir -p "src/userplugins"
+                      counter=0
 
-                  pnpmDeps = pnpm_10.fetchDeps {
-                    inherit (finalAttrs) pname src;
+                      for plugin in ${lib.concatStringsSep " " userplugins}; do
+                        echo "Processing plugin: $plugin"
+                        if [ -f "$plugin" ]
+                        then
+                          cp "$plugin" "src/userplugins";
+                        else
+                          mkdir -p "src/userplugins/PLUGIN$counter";
+                          cp -a "$plugin/." "src/userplugins/PLUGIN$counter";
+                        fi
+                        counter=$((counter+1))
+                      done
+                    '';
 
-                    hash = "sha256-g9BSVUKpn74D9eIDj/lS1Y6w/+AnhCw++st4s4REn+A=";
-                  };
+                    pnpmDeps = pnpm_10.fetchDeps {
+                      inherit (finalAttrs) pname src;
 
-                  nativeBuildInputs = with pkgs; [
-                    git
-                    nodejs
-                    pnpm_10.configHook
-                  ];
+                      hash = "sha256-g9BSVUKpn74D9eIDj/lS1Y6w/+AnhCw++st4s4REn+A=";
+                    };
 
-                  env = {
-                    ESBUILD_BINARY_PATH = lib.getExe (
-                      esbuild.overrideAttrs (
-                        final: _: {
-                          version = "0.25.0";
-                          src = fetchFromGitHub {
-                            owner = "evanw";
-                            repo = "esbuild";
-                            rev = "v${final.version}";
-                            hash = "sha256-L9jm94Epb22hYsU3hoq1lZXb5aFVD4FC4x2qNt0DljA=";
-                          };
-                          vendorHash = "sha256-+BfxCyg0KkDQpHt/wycy/8CTG6YBA/VJvJFhhzUnSiQ=";
-                        }
-                      )
-                    );
-                    VENCORD_REMOTE = "Vendicated/Vencord";
-                    VENCORD_HASH = self.shortRev or self.dirtyShortRev or "unknown";
-                  };
+                    nativeBuildInputs = with pkgs; [
+                      git
+                      nodejs
+                      pnpm_10.configHook
+                    ];
 
-                  buildPhase = ''
-                    runHook preBuild
+                    env = {
+                      ESBUILD_BINARY_PATH = lib.getExe (
+                        esbuild.overrideAttrs (
+                          final: _: {
+                            version = "0.25.0";
+                            src = fetchFromGitHub {
+                              owner = "evanw";
+                              repo = "esbuild";
+                              rev = "v${final.version}";
+                              hash = "sha256-L9jm94Epb22hYsU3hoq1lZXb5aFVD4FC4x2qNt0DljA=";
+                            };
+                            vendorHash = "sha256-+BfxCyg0KkDQpHt/wycy/8CTG6YBA/VJvJFhhzUnSiQ=";
+                          }
+                        )
+                      );
+                      VENCORD_REMOTE = "Vendicated/Vencord";
+                      VENCORD_HASH = self.shortRev or self.dirtyShortRev or "unknown";
+                    };
 
-                    pnpm run ${if buildWebExtension then "buildWeb" else "build"} \
-                      -- --standalone --disable-updater
+                    buildPhase = ''
+                      runHook preBuild
 
-                    runHook postBuild
-                  '';
+                      pnpm run ${if buildWebExtension then "buildWeb" else "build"} \
+                        -- --standalone --disable-updater
 
-                  installPhase = ''
-                    runHook preInstall
+                      runHook postBuild
+                    '';
 
-                    cp -r dist/${lib.optionalString buildWebExtension "chromium-unpacked/"} $out
+                    installPhase = ''
+                      runHook preInstall
 
-                    runHook postInstall
-                  '';
-                }))
-                { buildWebExtension = false; };
+                      cp -r dist/${lib.optionalString buildWebExtension "chromium-unpacked/"} $out
 
-            vencord = default;
+                      runHook postInstall
+                    '';
+                  }))
+                {
+                  buildWebExtension = false;
+                  userplugins = [ ];
+                };
+
+            default = vencord;
           });
 
       devShells =
