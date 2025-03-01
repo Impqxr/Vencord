@@ -3,10 +3,10 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
-    # flake-compat = {
-    #   url = "github:edolstra/flake-compat";
-    #   flake = false;
-    # };
+    flake-compat = {
+      url = "github:edolstra/flake-compat";
+      flake = false;
+    };
   };
 
   outputs = { self, nixpkgs, ... }:
@@ -84,6 +84,7 @@
                     buildPhase = ''
                       runHook preBuild
 
+                      unset SOURCE_DATE_EPOCH
                       pnpm run ${if buildWebExtension then "buildWeb" else "build"} \
                         -- --standalone --disable-updater
 
