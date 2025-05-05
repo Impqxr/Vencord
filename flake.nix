@@ -29,10 +29,11 @@
                 ({ buildWebExtension, userplugins }: stdenv.mkDerivation
                   (finalAttrs: {
                     pname = "vencord";
-                    version = "1.11.9";
+                    version = "1.12.0";
 
                     src = ./.;
 
+                    # TODO: make as derivations
                     patchPhase = ''
                       mkdir -p "src/userplugins"
                       counter=0
