@@ -1,5 +1,5 @@
 {
-  description = "Flake for Vencord (Custom)";
+  description = "Flake for Vencord with userplugins";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs";
@@ -9,118 +9,140 @@
     };
   };
 
-  outputs = { self, nixpkgs, ... }:
+  outputs =
+    { self, nixpkgs, ... }:
     let
       forAllSystems = f: nixpkgs.lib.genAttrs nixpkgs.lib.systems.flakeExposed (system: f system);
       pkgsFor = system: import nixpkgs { inherit system; };
     in
     {
-      packages = forAllSystems
-        (system:
-          let
-            pkgs = pkgsFor system;
-            inherit (pkgs) stdenv pnpm_10 lib esbuild fetchFromGitHub;
-          in
-          rec
-          {
-            # taken from nixpkgs vencord package and modified by me
-            vencord =
-              lib.makeOverridable
-                ({ buildWebExtension, userplugins }: stdenv.mkDerivation
-                  (finalAttrs: {
-                    pname = "vencord";
-                    version = "1.12.0";
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = pkgsFor system;
+          inherit (pkgs)
+            stdenv
+            pnpm_10
+            lib
+            esbuild
+            fetchFromGitHub
+            ;
+        in
+        rec {
+          pluginDrv =
+            { name, src }:
+            stdenv.mkDerivation {
+              inherit name src;
 
-                    src = ./.;
+              preferLocalBuild = true;
+              buildCommand = ''
+                cp -r $src $out
+              '';
+            };
 
-                    # TODO: make as derivations
-                    patchPhase = ''
-                      mkdir -p "src/userplugins"
-                      counter=0
+          # taken from nixpkgs vencord package and modified by me
+          vencord =
+            lib.makeOverridable
+              (
+                { buildWebExtension, userplugins }:
+                let
+                  pluginsDrv = lib.mapAttrs (
+                    name: src:
+                    self.packages.${system}.pluginDrv {
+                      inherit name src;
+                    }
+                  ) userplugins;
+                in
+                stdenv.mkDerivation (finalAttrs: {
+                  pname = "vencord";
+                  version = "1.12.0";
 
-                      for plugin in ${lib.concatStringsSep " " userplugins}; do
-                        echo "Processing plugin: $plugin"
-                        if [ -f "$plugin" ]
-                        then
-                          cp "$plugin" "src/userplugins";
-                        else
-                          mkdir -p "src/userplugins/PLUGIN$counter";
-                          cp -a "$plugin/." "src/userplugins/PLUGIN$counter";
-                        fi
-                        counter=$((counter+1))
-                      done
-                    '';
+                  src = ./.;
 
-                    pnpmDeps = pnpm_10.fetchDeps {
-                      inherit (finalAttrs) pname src;
+                  patchPhase = ''
+                    mkdir -p "src/userplugins"
 
-                      hash = "sha256-hO6QKRr4jTfesRDAEGcpFeJmGTGLGMw6EgIvD23DNzw=";
-                    };
+                    ${lib.concatStringsSep "\n" (
+                      lib.mapAttrsToList (name: drv: ''
+                        ${''
+                          cp ${drv.outPath} src/userplugins${lib.optionalString (lib.pathIsDirectory drv.outPath) "/${name} -r"}
+                        ''}
+                      '') pluginsDrv
+                    )}
+                  '';
 
-                    nativeBuildInputs = with pkgs; [
-                      git
-                      nodejs
-                      pnpm_10.configHook
-                    ];
+                  pnpmDeps = pnpm_10.fetchDeps {
+                    inherit (finalAttrs) pname src;
 
-                    env = {
-                      ESBUILD_BINARY_PATH = lib.getExe (
-                        esbuild.overrideAttrs (
-                          final: _: {
-                            version = "0.25.1";
-                            src = fetchFromGitHub {
-                              owner = "evanw";
-                              repo = "esbuild";
-                              rev = "v${final.version}";
-                              hash = "sha256-vrhtdrvrcC3dQoJM6hWq6wrGJLSiVww/CNPlL1N5kQ8=";
-                            };
-                            vendorHash = "sha256-+BfxCyg0KkDQpHt/wycy/8CTG6YBA/VJvJFhhzUnSiQ=";
-                          }
-                        )
-                      );
-                      VENCORD_REMOTE = "Vendicated/Vencord";
-                      VENCORD_HASH = self.shortRev or self.dirtyShortRev or "unknown";
-                    };
+                    hash = "sha256-hO6QKRr4jTfesRDAEGcpFeJmGTGLGMw6EgIvD23DNzw=";
+                  };
 
-                    buildPhase = ''
-                      runHook preBuild
+                  nativeBuildInputs = with pkgs; [
+                    git
+                    nodejs
+                    pnpm_10.configHook
+                  ];
 
-                      unset SOURCE_DATE_EPOCH
-                      pnpm run ${if buildWebExtension then "buildWeb" else "build"} \
-                        -- --standalone --disable-updater
+                  env = {
+                    ESBUILD_BINARY_PATH = lib.getExe (
+                      esbuild.overrideAttrs (
+                        final: _: {
+                          version = "0.25.1";
+                          src = fetchFromGitHub {
+                            owner = "evanw";
+                            repo = "esbuild";
+                            rev = "v${final.version}";
+                            hash = "sha256-vrhtdrvrcC3dQoJM6hWq6wrGJLSiVww/CNPlL1N5kQ8=";
+                          };
+                          vendorHash = "sha256-+BfxCyg0KkDQpHt/wycy/8CTG6YBA/VJvJFhhzUnSiQ=";
+                        }
+                      )
+                    );
+                    VENCORD_REMOTE = "Vendicated/Vencord";
+                    VENCORD_HASH = self.shortRev or self.dirtyShortRev or "unknown";
+                  };
 
-                      runHook postBuild
-                    '';
+                  buildPhase = ''
+                    runHook preBuild
 
-                    installPhase = ''
-                      runHook preInstall
+                    unset SOURCE_DATE_EPOCH
+                    pnpm run ${if buildWebExtension then "buildWeb" else "build"} \
+                      -- --standalone --disable-updater
 
-                      cp -r dist/${lib.optionalString buildWebExtension "chromium-unpacked/"} $out
+                    runHook postBuild
+                  '';
 
-                      runHook postInstall
-                    '';
-                  }))
-                {
-                  buildWebExtension = false;
-                  userplugins = [ ];
-                };
+                  installPhase = ''
+                    runHook preInstall
 
-            default = vencord;
-          });
+                    cp -r dist/${lib.optionalString buildWebExtension "chromium-unpacked/"} $out
 
-      devShells =
-        forAllSystems
-          (system:
-            let
-              pkgs = pkgsFor system;
-            in
-            {
-              default = pkgs.mkShell {
-                packages = with pkgs; [
-                  nodejs
-                  pnpm_10
-                ];
+                    runHook postInstall
+                  '';
+                })
+              )
+              {
+                buildWebExtension = false;
+                userplugins = { };
               };
-            });
+
+          default = vencord;
+        }
+      );
+
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = pkgsFor system;
+        in
+        {
+          default = pkgs.mkShell {
+            packages = with pkgs; [
+              nodejs
+              pnpm_10
+            ];
+          };
+        }
+      );
     };
 }
