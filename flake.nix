@@ -46,12 +46,12 @@
               (
                 { buildWebExtension, userplugins }:
                 let
-                  pluginsDrv = lib.mapAttrs (
-                    name: src:
-                    self.packages.${system}.pluginDrv {
+                  pluginsDrv = lib.mapAttrs (name: src: {
+                    realName = if (lib.pathIsDirectory src) then null else builtins.baseNameOf src;
+                    drv = self.packages.${system}.pluginDrv {
                       inherit name src;
-                    }
-                  ) userplugins;
+                    };
+                  }) userplugins;
                 in
                 stdenv.mkDerivation (finalAttrs: {
                   pname = "vencord";
@@ -63,9 +63,21 @@
                     mkdir -p "src/userplugins"
 
                     ${lib.concatStringsSep "\n" (
-                      lib.mapAttrsToList (name: drv: ''
+                      lib.mapAttrsToList (name: plugin: ''
                         ${''
-                          cp ${drv.outPath} src/userplugins${lib.optionalString (lib.pathIsDirectory drv.outPath) "/${name} -r"}
+                          if [[ -e "${name}" ]]; then
+                            echo "Found conflicting plugin ${name}. Please change the name for it"
+                            exit 1
+                          fi
+                          if [[ "${
+                            toString (plugin.realName != null)
+                          }" == "false" && -e "${toString plugin.realName}" ]]; then
+                            echo "Found conflicting plugin filename ${toString plugin.realName}. Please change the filename"
+                            exit 1
+                          fi
+                          cp -r ${plugin.drv.outPath} src/userplugins/${
+                            if plugin.realName == null then name else plugin.realName
+                          }
                         ''}
                       '') pluginsDrv
                     )}
