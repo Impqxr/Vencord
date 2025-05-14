@@ -55,7 +55,7 @@
                 in
                 stdenv.mkDerivation (finalAttrs: {
                   pname = "vencord";
-                  version = "1.12.0";
+                  version = "1.12.1";
 
                   src = ./.;
 
