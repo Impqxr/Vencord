@@ -44,7 +44,11 @@
           vencord =
             lib.makeOverridable
               (
-                { buildWebExtension, userplugins }:
+                {
+                  buildWebExtension,
+                  userplugins,
+                  additionalFlags,
+                }:
                 let
                   pluginsDrv = lib.mapAttrs (name: src: {
                     realName = if (lib.pathIsDirectory src) then null else builtins.baseNameOf src;
@@ -119,7 +123,7 @@
 
                     unset SOURCE_DATE_EPOCH
                     pnpm run ${if buildWebExtension then "buildWeb" else "build"} \
-                      -- --standalone --disable-updater
+                      -- --standalone --disable-updater ${additionalFlags}
 
                     runHook postBuild
                   '';
@@ -136,6 +140,7 @@
               {
                 buildWebExtension = false;
                 userplugins = { };
+                additionalFlags = "";
               };
 
           default = vencord;
